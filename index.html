@@ -23,8 +23,8 @@ label{font-size:13px;font-weight:bold;display:grid;gap:7px}input,select,textarea
  <div class="login-card">
   <div class="crest">K</div><div class="eyebrow">KWAME NKRUMAH UNIVERSITY OF SCIENCE AND TECHNOLOGY</div>
   <h1>Smart School Management</h1><p class="muted">Class attendance, courses and student records in one simple portal.</p>
-  <form id="loginForm"><label>Email, index number or staff ID<input id="identity" required placeholder="Enter your login ID"></label><label>Password<input id="pass" type="password" required placeholder="Enter password"></label><button class="btn primary wide">Sign in</button><div id="loginError" class="error"></div></form>
-  <details class="demo"><summary>Demo accounts (click to view)</summary><p><b>Admin:</b> admin@knust.edu.gh / Admin123</p><p><b>Lecturer:</b> lecturer@knust.edu.gh / Teach123</p><p><b>Student:</b> 70012345 / Student123</p><small>Demo data is stored only in this browser. Do not use real sensitive student information.</small></details>
+  <form id="loginForm"><label>Email address<input id="identity" required placeholder="name@example.com"></label><label>Password<input id="pass" type="password" required placeholder="Enter password"></label><button class="btn primary wide">Sign in</button><div id="loginError" class="error"></div></form>
+  <p class="hint">Use your university account email and password. New student accounts can be registered by the administrator.</p>
  </div>
 </section>
 <div id="app" class="layout hidden">
@@ -32,105 +32,126 @@ label{font-size:13px;font-weight:bold;display:grid;gap:7px}input,select,textarea
  <main class="main"><header class="topbar"><div><div class="eyebrow" style="margin:0">SMART SCHOOL MANAGEMENT</div><h2 id="title">Dashboard</h2></div><div class="user"><div id="userName"></div><span id="userRole" class="pill"></span></div></header><div id="content" class="content"></div></main>
 </div>
 <div id="qrModal" class="modal hidden"><div class="modalbox"><button class="close" id="closeModal">×</button><h3>Class attendance code</h3><p id="qrInfo" class="muted"></p><img id="qrImg" class="qr" alt="QR code"><p id="qrText" class="hint"></p><button id="copyQr" class="btn soft">Copy attendance code</button></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-/* KNUST Smart Attendance - browser-only demonstration.
-   All records are kept in localStorage on this device. */
-const $=s=>document.querySelector(s), uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36), today=()=>new Date().toISOString();
-let db, me=null, page='dashboard', activeQr='';
-const KEY='knust_smart_attendance_v1';
-function seed(){
- if(localStorage.getItem(KEY))return JSON.parse(localStorage.getItem(KEY));
- const admin={id:uid(),role:'ADMIN',name:'System Administrator',email:'admin@knust.edu.gh',password:'Admin123',status:'ACTIVE',department:'ICT Directorate'};
- const lect={id:uid(),role:'LECTURER',name:'Dr. Ama Serwaa',email:'lecturer@knust.edu.gh',staffId:'KNUST-L001',password:'Teach123',status:'ACTIVE',department:'Computer Engineering'};
- const stud={id:uid(),role:'STUDENT',name:'Yaw Boateng',email:'yaw@knust.edu.gh',index:'70012345',password:'Student123',status:'ACTIVE',department:'Computer Engineering',programme:'BSc Computer Engineering',level:200};
- const course={id:uid(),code:'COE 251',name:'Computer Architecture and Organization',lecturerId:lect.id,venue:'ICT Lecture Theatre',department:'Computer Engineering',credits:3};
- const data={users:[admin,lect,stud],courses:[course],registrations:[{id:uid(),studentId:stud.id,courseId:course.id}],sessions:[],attendance:[]};localStorage.setItem(KEY,JSON.stringify(data));return data;
-}
-function save(){localStorage.setItem(KEY,JSON.stringify(db))}
-function safe(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function toast(s){let t=$('#toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
-function userKey(u){return u.email||u.index||u.staffId||''}
+/*
+ KNUST Smart School Management — Supabase-connected frontend.
+ Configure SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY below.
+ Never put a service-role/secret key in this file.
+*/
+const SUPABASE_URL = "https://hhyzybbcwylgtmnxgxhp.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_79zrXgeaDwbBZgpiQFfgPw_hsrhpb1-";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isoNow = () => new Date().toISOString();
+let sb=null, me=null, page='dashboard', activeQr='', qrInstance=null;
+let db={users:[],courses:[],registrations:[],sessions:[],attendance:[]};
+const menus={ADMIN:[['dashboard','Overview'],['people','Students & lecturers'],['courses','Courses'],['register','Course registration'],['reports','Attendance reports']],LECTURER:[['dashboard','Overview'],['sessions','Attendance sessions'],['reports','Attendance reports']],STUDENT:[['dashboard','Overview'],['scan','Scan attendance'],['history','My attendance'],['courses','My courses']]};
+const roleLabel=r=>String(r||'').toUpperCase();
+function toast(s){const t=$('#toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
+function failMessage(e){console.error(e);return e?.message||'Something went wrong. Please try again.'}
 function getCourse(id){return db.courses.find(c=>c.id===id)}
 function getUser(id){return db.users.find(u=>u.id===id)}
-function coursesForUser(){if(me.role==='ADMIN')return db.courses;if(me.role==='LECTURER')return db.courses.filter(c=>c.lecturerId===me.id);return db.courses.filter(c=>db.registrations.some(r=>r.studentId===me.id&&r.courseId===c.id))}
-const menus={ADMIN:[['dashboard','Overview'],['people','Students & lecturers'],['courses','Courses'],['register','Course registration'],['reports','Attendance reports']],LECTURER:[['dashboard','Overview'],['sessions','Attendance sessions'],['reports','Attendance reports']],STUDENT:[['dashboard','Overview'],['scan','Scan attendance'],['history','My attendance'],['courses','My courses']]};
-function login(user){me=user;$('#loginScreen').classList.add('hidden');$('#app').classList.remove('hidden');$('#userName').textContent=user.name;$('#userRole').textContent=user.role;$('#sideCaption').textContent=user.role+' MENU';renderNav();go('dashboard')}
-function renderNav(){$('#nav').innerHTML=menus[me.role].map(([k,v])=>`<button class="${page===k?'active':''}" data-page="${k}">${v}</button>`).join('');document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>go(b.dataset.page))}
-function go(p){page=p;renderNav();const titles={dashboard:'Dashboard',people:'Students & lecturers',courses:me.role==='STUDENT'?'My courses':'Course management',register:'Course registration',sessions:'Attendance sessions',scan:'Scan attendance',history:'My attendance',reports:'Attendance reports'};$('#title').textContent=titles[p];({dashboard:dashboard,people:people,courses:courses,register:register,sessions:sessions,scan:scan,history:history,reports:reports}[p])()}
-function stat(n,v){return `<div class="stat"><span>${n}</span><strong>${v}</strong></div>`}
+function coursesForUser(){if(me.role==='admin')return db.courses;if(me.role==='lecturer')return db.courses.filter(c=>c.lecturer_id===me.id);return db.courses.filter(c=>db.registrations.some(r=>r.student_id===me.id&&r.course_id===c.id))}
+function loginView(){ $('#loginScreen').classList.remove('hidden');$('#app').classList.add('hidden'); }
+function loginViewError(message){$('#loginError').textContent=message}
+async function refreshData(){
+ const [p,c,e,s,a]=await Promise.all([
+  sb.from('profiles').select('id,full_name,student_id,role'),
+  sb.from('courses').select('id,course_code,course_title,lecturer_id,created_at').order('course_code'),
+  sb.from('enrollments').select('id,course_id,student_id,created_at'),
+  sb.from('class_sessions').select('id,course_id,lecturer_id,attendance_code,starts_at,ends_at,latitude,longitude,radius_m'),
+  sb.from('attendance').select('id,session_id,student_id,latitude,longitude,distance_m,marked_at')
+ ]);
+ for(const r of [p,c,e,s,a]) if(r.error) throw r.error;
+ db.users=p.data||[]; db.courses=c.data||[]; db.registrations=e.data||[]; db.sessions=s.data||[]; db.attendance=a.data||[];
+}
+async function currentProfile(){
+ const {data:{user},error}=await sb.auth.getUser(); if(error)throw error; if(!user)return null;
+ const {data,error:e}=await sb.from('profiles').select('id,full_name,student_id,role').eq('id',user.id).single();
+ if(e)throw e; return {...data,email:user.email};
+}
+async function enterApp(){
+ try{me=await currentProfile();if(!me){loginView();return}
+  me.role=String(me.role).toLowerCase(); await refreshData();
+  $('#loginScreen').classList.add('hidden');$('#app').classList.remove('hidden');
+  $('#userName').textContent=me.full_name||me.email;$('#userRole').textContent=roleLabel(me.role);
+  $('#sideCaption').textContent=roleLabel(me.role)+' MENU';go('dashboard');
+ }catch(e){loginView();loginViewError(failMessage(e))}
+}
+function renderNav(){const items=menus[roleLabel(me.role)]||[];$('#nav').innerHTML=items.map(([k,v])=>`<button class="${page===k?'active':''}" data-page="${k}">${v}</button>`).join('');document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>go(b.dataset.page))}
+function go(p){page=p;renderNav();const titles={dashboard:'Dashboard',people:'Students & lecturers',courses:me.role==='student'?'My courses':'Course management',register:'Course registration',sessions:'Attendance sessions',scan:'Scan attendance',history:'My attendance',reports:'Attendance reports'};$('#title').textContent=titles[p]||'Dashboard';({dashboard,people,courses,register,sessions,scan,history,reports}[p]||dashboard)()}
+function stat(n,v){return `<div class="stat"><span>${esc(n)}</span><strong>${esc(v)}</strong></div>`}
 function table(head,rows){return rows.length?`<div class="tablebox"><table><thead><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`:'<div class="empty">No records available yet.</div>'}
 function dashboard(){
- const cs=coursesForUser(), sessions=me.role==='ADMIN'?db.sessions:db.sessions.filter(s=>me.role==='LECTURER'?s.lecturerId===me.id:db.registrations.some(r=>r.studentId===me.id&&r.courseId===s.courseId));
- const at=me.role==='ADMIN'?db.attendance:db.attendance.filter(a=>me.role==='STUDENT'?a.studentId===me.id:sessions.some(s=>s.id===a.sessionId));
- let cards='';if(me.role==='ADMIN')cards+=stat('Students',db.users.filter(u=>u.role==='STUDENT').length);if(me.role!=='STUDENT')cards+=stat('Lecturers',db.users.filter(u=>u.role==='LECTURER').length);cards+=stat('Courses',cs.length)+stat('Attendance records',at.length)+stat('Class sessions',sessions.length);
- $('#content').innerHTML=`<div class="grid">${cards}</div><div class="section"><h3>${me.role==='STUDENT'?'My registered courses':'Courses'}</h3></div>${table(['Code','Course title','Lecturer','Venue'],cs.map(c=>`<tr><td><b>${safe(c.code)}</b></td><td>${safe(c.name)}</td><td>${safe(getUser(c.lecturerId)?.name||'Not assigned')}</td><td>${safe(c.venue||'—')}</td></tr>`))}<div class="section"><h3>Recent attendance</h3></div>${table(['Student','Index','Course','Date','Status'],at.slice().sort((a,b)=>b.time.localeCompare(a.time)).slice(0,8).map(a=>`<tr><td>${safe(getUser(a.studentId)?.name||'')}</td><td>${safe(getUser(a.studentId)?.index||'')}</td><td>${safe(getCourse(a.courseId)?.code||'')}</td><td>${new Date(a.time).toLocaleString()}</td><td><span class="status">${safe(a.status)}</span></td></tr>`))}`;
+ const cs=coursesForUser(), sessions=me.role==='admin'?db.sessions:db.sessions.filter(s=>me.role==='lecturer'?s.lecturer_id===me.id:db.registrations.some(r=>r.student_id===me.id&&r.course_id===s.course_id));
+ const at=me.role==='admin'?db.attendance:db.attendance.filter(a=>me.role==='student'?a.student_id===me.id:sessions.some(s=>s.id===a.session_id));
+ let cards='';if(me.role==='admin')cards+=stat('Students',db.users.filter(u=>u.role==='student').length);if(me.role!=='student')cards+=stat('Lecturers',db.users.filter(u=>u.role==='lecturer').length);cards+=stat('Courses',cs.length)+stat('Attendance records',at.length)+stat('Class sessions',sessions.length);
+ $('#content').innerHTML=`<div class="grid">${cards}</div><div class="section"><h3>${me.role==='student'?'My registered courses':'Courses'}</h3></div>${table(['Code','Course title','Lecturer'],cs.map(c=>`<tr><td><b>${esc(c.course_code)}</b></td><td>${esc(c.course_title)}</td><td>${esc(getUser(c.lecturer_id)?.full_name||'Not assigned')}</td></tr>`))}<div class="section"><h3>Recent attendance</h3></div>${table(['Student','Student ID','Course','Date','Status'],at.slice().sort((a,b)=>b.marked_at.localeCompare(a.marked_at)).slice(0,8).map(a=>`<tr><td>${esc(getUser(a.student_id)?.full_name)}</td><td>${esc(getUser(a.student_id)?.student_id||'')}</td><td>${esc(getCourse(db.sessions.find(s=>s.id===a.session_id)?.course_id)?.course_code||'')}</td><td>${new Date(a.marked_at).toLocaleString()}</td><td><span class="status">PRESENT</span></td></tr>`))}`;
 }
-function people(){
- const users=db.users.filter(u=>u.role!=='ADMIN');
+async function people(){
+ if(me.role!=='admin')return;
+ const users=db.users.filter(u=>u.role!=='admin');
  $('#content').innerHTML=`<div class="panel"><h3>Create student or lecturer account</h3><form id="personForm" class="formgrid">
- <label>Account type<select name="role"><option>STUDENT</option><option>LECTURER</option></select></label><label>Full name<input name="name" required></label>
- <label>Email<input name="email" type="email"></label><label>Temporary password<input name="password" minlength="6" required></label>
- <label>Student index number<input name="index" placeholder="Required for students"></label><label>Lecturer staff ID<input name="staffId" placeholder="Required for lecturers"></label>
- <label>Department<input name="department"></label><label>Programme<input name="programme"></label><label>Level<input name="level" type="number"></label><div class="full"><button class="btn primary">Create account</button></div></form></div>
- <div class="section"><h3>Accounts (${users.length})</h3></div>${table(['Name','Role','Login ID','Department','Status','Action'],users.map(u=>`<tr><td>${safe(u.name)}</td><td>${u.role}</td><td>${safe(userKey(u))}</td><td>${safe(u.department||'—')}</td><td><span class="status ${u.status==='ACTIVE'?'':'pending'}">${u.status}</span></td><td><button class="btn soft" data-status="${u.id}">${u.status==='ACTIVE'?'Suspend':'Activate'}</button></td></tr>`))}`;
- $('#personForm').onsubmit=e=>{e.preventDefault();let x=Object.fromEntries(new FormData(e.target));if(x.role==='STUDENT'&&!x.index)return toast('Student index number is required.');if(x.role==='LECTURER'&&!x.staffId)return toast('Lecturer staff ID is required.');if(db.users.some(u=>userKey(u).toLowerCase()&&(userKey(u).toLowerCase()===(x.email||x.index||x.staffId).toLowerCase())))return toast('That login ID already exists.');x.id=uid();x.status='ACTIVE';db.users.push(x);save();toast('Account created.');people()};
- document.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>{let u=getUser(b.dataset.status);u.status=u.status==='ACTIVE'?'SUSPENDED':'ACTIVE';save();people()});
+ <label>Account type<select name="role"><option value="student">STUDENT</option><option value="lecturer">LECTURER</option></select></label>
+ <label>Full name<input name="full_name" required></label><label>Email<input name="email" type="email" required></label>
+ <label>Temporary password<input name="password" type="password" minlength="8" required></label>
+ <label>Student index number<input name="student_id" placeholder="Required for students"></label>
+ <div class="full notice">Accounts are created securely by the Supabase Edge Function. Give the temporary password to the account holder and ask them to change it after signing in.</div>
+ <div class="full"><button class="btn primary">Create account</button></div></form></div>
+ <div class="section"><h3>Accounts (${users.length})</h3></div>${table(['Name','Role','Student ID'],users.map(u=>`<tr><td>${esc(u.full_name)}</td><td>${roleLabel(u.role)}</td><td>${esc(u.student_id||'—')}</td></tr>`))}`;
+ $('#personForm').onsubmit=async e=>{e.preventDefault();const x=Object.fromEntries(new FormData(e.target));if(x.role==='student'&&!x.student_id)return toast('Student ID is required.');try{
+  const {data:{session}}=await sb.auth.getSession();
+  const resp=await fetch(`${SUPABASE_URL}/functions/v1/create-user`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPABASE_PUBLISHABLE_KEY},body:JSON.stringify(x)});
+  const result=await resp.json();if(!resp.ok)throw new Error(result.error||'Account creation failed.');
+  toast('Account created successfully.');await refreshData();people();
+ }catch(err){toast(failMessage(err))}};
 }
 function courses(){
- const cs=coursesForUser(),lecturers=db.users.filter(u=>u.role==='LECTURER'&&u.status==='ACTIVE');
- $('#content').innerHTML=(me.role==='ADMIN'?`<div class="panel"><h3>Create course</h3><form id="courseForm" class="formgrid">
- <label>Course code<input name="code" required placeholder="e.g. COE 251"></label><label>Course title<input name="name" required></label><label>Credits<input name="credits" type="number" value="3"></label><label>Department<input name="department"></label><label>Lecturer<select name="lecturerId"><option value="">Unassigned</option>${lecturers.map(l=>`<option value="${l.id}">${safe(l.name)}</option>`).join('')}</select></label><label>Venue<input name="venue"></label><div class="full"><button class="btn primary">Save course</button></div></form></div>`:'')+`<div class="section"><h3>Course list (${cs.length})</h3></div>${table(['Code','Title','Credits','Lecturer','Venue'],cs.map(c=>`<tr><td><b>${safe(c.code)}</b></td><td>${safe(c.name)}</td><td>${safe(c.credits||3)}</td><td>${safe(getUser(c.lecturerId)?.name||'—')}</td><td>${safe(c.venue||'—')}</td></tr>`))}`;
- if($('#courseForm'))$('#courseForm').onsubmit=e=>{e.preventDefault();let x=Object.fromEntries(new FormData(e.target));if(db.courses.some(c=>c.code.toLowerCase()===x.code.trim().toLowerCase()))return toast('Course code already exists.');x.id=uid();x.code=x.code.toUpperCase();db.courses.push(x);save();toast('Course saved.');courses()};
+ const cs=coursesForUser(),lecturers=db.users.filter(u=>u.role==='lecturer');
+ $('#content').innerHTML=(me.role==='admin'?`<div class="panel"><h3>Create course</h3><form id="courseForm" class="formgrid"><label>Course code<input name="course_code" required></label><label>Course title<input name="course_title" required></label><label>Lecturer<select name="lecturer_id"><option value="">Unassigned</option>${lecturers.map(l=>`<option value="${l.id}">${esc(l.full_name)}</option>`).join('')}</select></label><div class="full"><button class="btn primary">Save course</button></div></form></div>`:'')+`<div class="section"><h3>Course list (${cs.length})</h3></div>${table(['Code','Title','Lecturer'],cs.map(c=>`<tr><td><b>${esc(c.course_code)}</b></td><td>${esc(c.course_title)}</td><td>${esc(getUser(c.lecturer_id)?.full_name||'—')}</td></tr>`))}`;
+ if($('#courseForm'))$('#courseForm').onsubmit=async e=>{e.preventDefault();const x=Object.fromEntries(new FormData(e.target));try{const {error}=await sb.from('courses').insert({course_code:x.course_code.trim().toUpperCase(),course_title:x.course_title.trim(),lecturer_id:x.lecturer_id||null});if(error)throw error;await refreshData();toast('Course saved.');courses()}catch(err){toast(failMessage(err))}};
 }
 function register(){
- const students=db.users.filter(u=>u.role==='STUDENT'),cs=db.courses;
- $('#content').innerHTML=`<div class="panel"><h3>Register student for course</h3><form id="regForm" class="formgrid"><label>Student<select name="studentId" required><option value="">Select student</option>${students.map(s=>`<option value="${s.id}">${safe(s.name)} — ${safe(s.index)}</option>`).join('')}</select></label><label>Course<select name="courseId" required><option value="">Select course</option>${cs.map(c=>`<option value="${c.id}">${safe(c.code)} — ${safe(c.name)}</option>`).join('')}</select></label><div class="full"><button class="btn primary">Register student</button></div></form></div><p class="hint">Students can only record attendance for courses they are registered for.</p>`;
- $('#regForm').onsubmit=e=>{e.preventDefault();let x=Object.fromEntries(new FormData(e.target));if(db.registrations.some(r=>r.studentId===x.studentId&&r.courseId===x.courseId))return toast('Student is already registered.');db.registrations.push({id:uid(),...x});save();toast('Student registered.')};
+ const students=db.users.filter(u=>u.role==='student'),cs=db.courses;
+ $('#content').innerHTML=`<div class="panel"><h3>Register student for course</h3><form id="regForm" class="formgrid"><label>Student<select name="student_id" required><option value="">Select student</option>${students.map(s=>`<option value="${s.id}">${esc(s.full_name)} — ${esc(s.student_id||'')}</option>`).join('')}</select></label><label>Course<select name="course_id" required><option value="">Select course</option>${cs.map(c=>`<option value="${c.id}">${esc(c.course_code)} — ${esc(c.course_title)}</option>`).join('')}</select></label><div class="full"><button class="btn primary">Register student</button></div></form></div><p class="hint">Students can only record attendance for courses they are registered for.</p>`;
+ $('#regForm').onsubmit=async e=>{e.preventDefault();const x=Object.fromEntries(new FormData(e.target));try{const {error}=await sb.from('enrollments').insert(x);if(error)throw error;await refreshData();toast('Student registered.')}catch(err){toast(failMessage(err))}};
 }
-
-function getLiveLocation(){
- return new Promise((resolve,reject)=>{
-  if(!navigator.geolocation) return reject(new Error('This browser does not support location access.'));
-  navigator.geolocation.getCurrentPosition(
-   p=>resolve({lat:p.coords.latitude,lon:p.coords.longitude,accuracy:Math.round(p.coords.accuracy),capturedAt:today()}),
-   e=>reject(new Error(e.code===1?'Location permission was denied. Please allow location access.':e.code===2?'Your location is unavailable. Try again outdoors.':'Location request timed out. Try again.')),
-   {enableHighAccuracy:true,timeout:15000,maximumAge:0}
-  );
- });
-}
-function distanceMetres(a,b){
- const rad=n=>n*Math.PI/180, R=6371000;
- const dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon);
- const x=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
- return 2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
-}
-
+function getLiveLocation(){return new Promise((resolve,reject)=>{if(!navigator.geolocation)return reject(new Error('This browser does not support location access.'));navigator.geolocation.getCurrentPosition(p=>resolve({lat:p.coords.latitude,lon:p.coords.longitude,accuracy:Math.round(p.coords.accuracy)}),e=>reject(new Error(e.code===1?'Location permission was denied.':e.code===2?'Your location is unavailable.':'Location request timed out.')),{enableHighAccuracy:true,timeout:15000,maximumAge:0})})}
 function sessions(){
- const cs=coursesForUser(),mine=db.sessions.filter(s=>me.role==='ADMIN'||s.lecturerId===me.id);
- $('#content').innerHTML=`<div class="panel"><h3>Start class attendance</h3><form id="sessionForm" class="formgrid"><label>Course<select name="courseId" required><option value="">Choose course</option>${cs.map(c=>`<option value="${c.id}">${safe(c.code)} — ${safe(c.name)}</option>`).join('')}</select></label><label>QR validity (minutes)<input name="duration" type="number" min="1" max="90" value="10"></label><div class="full notice">Your browser will ask permission to capture the lecturer’s current location when the class starts. Students must allow location access when submitting attendance. Location is used only for this attendance check.</div><div class="full"><button class="btn primary">Generate QR attendance code</button></div></form></div><div class="section"><h3>Attendance sessions</h3></div>${table(['Course','Created','Expires','Status','Action'],mine.slice().reverse().map(s=>`<tr><td>${safe(getCourse(s.courseId)?.code||'')}</td><td>${new Date(s.created).toLocaleString()}</td><td>${new Date(s.expires).toLocaleTimeString()}</td><td><span class="status ${s.closed?'pending':''}">${s.closed?'CLOSED':Date.now()>Date.parse(s.expires)?'EXPIRED':'ACTIVE'}</span></td><td><div class="actions"><button class="btn soft" data-showqr="${s.id}">Show QR</button>${!s.closed&&Date.now()<Date.parse(s.expires)?`<button class="btn danger" data-close="${s.id}">Close</button>`:''}</div></td></tr>`))}`;
- $('#sessionForm').onsubmit=async e=>{e.preventDefault();let x=Object.fromEntries(new FormData(e.target)),mins=Math.min(90,Math.max(1,Number(x.duration)||10));try{toast('Requesting lecturer location…');const loc=await getLiveLocation();let s={id:uid(),courseId:x.courseId,lecturerId:me.id,created:today(),expires:new Date(Date.now()+mins*60000).toISOString(),closed:false,code:uid()+uid(),location:loc};db.sessions.push(s);save();showQr(s);sessions()}catch(err){toast(err.message)}};
+ const cs=me.role==='admin'?db.courses:coursesForUser(),mine=db.sessions.filter(s=>me.role==='admin'||s.lecturer_id===me.id);
+ $('#content').innerHTML=`<div class="panel"><h3>Start class attendance</h3><form id="sessionForm" class="formgrid"><label>Course<select name="course_id" required><option value="">Choose course</option>${cs.map(c=>`<option value="${c.id}">${esc(c.course_code)} — ${esc(c.course_title)}</option>`).join('')}</select></label><label>Code validity (minutes)<input name="duration" type="number" min="1" max="90" value="10"></label><div class="full notice">Your browser will request your location when you start the class. Students must also allow location access when submitting attendance.</div><div class="full"><button class="btn primary">Generate attendance code</button></div></form></div><div class="section"><h3>Attendance sessions</h3></div>${table(['Course','Created','Expires','Status','Action'],mine.slice().reverse().map(s=>`<tr><td>${esc(getCourse(s.course_id)?.course_code||'')}</td><td>${new Date(s.starts_at).toLocaleString()}</td><td>${s.ends_at?new Date(s.ends_at).toLocaleTimeString():'—'}</td><td><span class="status">${Date.now()>Date.parse(s.ends_at)?'EXPIRED':'ACTIVE'}</span></td><td><button class="btn soft" data-showqr="${s.id}">Show QR</button></td></tr>`))}`;
+ $('#sessionForm').onsubmit=async e=>{e.preventDefault();const x=Object.fromEntries(new FormData(e.target));try{toast('Requesting lecturer location…');const loc=await getLiveLocation();const {data,error}=await sb.rpc('start_class_session',{p_course_id:x.course_id,p_duration_minutes:Math.min(90,Math.max(1,Number(x.duration)||10)),p_latitude:loc.lat,p_longitude:loc.lon});if(error)throw error;await refreshData();const s=db.sessions.find(v=>v.id===data);if(s)showQr(s);sessions()}catch(err){toast(failMessage(err))}};
  document.querySelectorAll('[data-showqr]').forEach(b=>b.onclick=()=>showQr(db.sessions.find(s=>s.id===b.dataset.showqr)));
- document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{let s=db.sessions.find(s=>s.id===b.dataset.close);s.closed=true;save();sessions()});
 }
-function showQr(s){activeQr=s.code;$('#qrInfo').textContent=(getCourse(s.courseId)?.code||'Class')+' • expires '+new Date(s.expires).toLocaleTimeString();$('#qrText').textContent='Attendance code: '+s.code;$('#qrImg').src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data='+encodeURIComponent(s.code);$('#qrModal').classList.remove('hidden')}
+function showQr(s){activeQr=s.attendance_code;$('#qrInfo').textContent=(getCourse(s.course_id)?.course_code||'Class')+' • expires '+new Date(s.ends_at).toLocaleTimeString();$('#qrText').textContent='Attendance code: '+s.attendance_code;const holder=$('#qrImg');holder.removeAttribute('src');holder.innerHTML='';if(window.QRCode){qrInstance=new QRCode(holder,{text:s.attendance_code,width:240,height:240});}else holder.textContent='QR library unavailable. Use the code below.';$('#qrModal').classList.remove('hidden')}
 function scan(){
  const cs=coursesForUser();
- $('#content').innerHTML=`<div class="panel" style="max-width:600px"><h3>Record class attendance</h3><p class="hint">Enter the code shown by your lecturer. When you submit, your browser will ask permission to share your current location. Your location is compared with the lecturer’s recorded class location.</p><div class="scanner">Use your phone camera to scan the lecturer's QR code, then enter the decoded text below.</div><form id="scanForm" class="formgrid"><label class="full">Attendance code<input name="code" required placeholder="Paste the code decoded from the QR"></label><div class="full"><button class="btn primary">Submit attendance</button></div></form><div id="scanMsg" class="hint"></div></div>`;
- $('#scanForm').onsubmit=async e=>{e.preventDefault();let code=new FormData(e.target).get('code').trim(),s=db.sessions.find(x=>x.code===code);if(!s||s.closed||Date.now()>Date.parse(s.expires))return $('#scanMsg').textContent='This code is invalid, closed or expired.';if(!db.registrations.some(r=>r.studentId===me.id&&r.courseId===s.courseId))return $('#scanMsg').textContent='You are not registered for this course.';if(db.attendance.some(a=>a.studentId===me.id&&a.sessionId===s.id))return $('#scanMsg').textContent='Attendance has already been recorded for this class.';$('#scanMsg').textContent='Requesting your location…';try{const loc=await getLiveLocation();if(!s.location)return $('#scanMsg').textContent='This session has no lecturer location. Ask the lecturer to create a new session.';const metres=distanceMetres(s.location,loc);const allowed=150+Math.min(50,(s.location.accuracy||0)+(loc.accuracy||0));if(metres>allowed)return $('#scanMsg').textContent='You appear to be outside the class location range ('+Math.round(metres)+' metres away). Attendance was not recorded.';db.attendance.push({id:uid(),studentId:me.id,courseId:s.courseId,sessionId:s.id,time:today(),status:'PRESENT',location:{lat:loc.lat,lon:loc.lon,accuracy:loc.accuracy,distanceMetres:Math.round(metres)}});save();$('#scanMsg').textContent='Attendance recorded. Your location was within the permitted range.';toast('Attendance recorded.')}catch(err){$('#scanMsg').textContent=err.message}};
+ $('#content').innerHTML=`<div class="panel" style="max-width:600px"><h3>Record class attendance</h3><p class="hint">Enter the code shown by your lecturer. Your current location is checked against the class location.</p><div class="scanner">Use your phone camera to scan the lecturer's QR code, then enter the decoded text below.</div><form id="scanForm" class="formgrid"><label class="full">Attendance code<input name="code" required placeholder="Paste the decoded QR code"></label><div class="full"><button class="btn primary">Submit attendance</button></div></form><div id="scanMsg" class="hint"></div></div>`;
+ $('#scanForm').onsubmit=async e=>{e.preventDefault();const code=new FormData(e.target).get('code').trim();$('#scanMsg').textContent='Requesting your location…';try{const loc=await getLiveLocation();const {data,error}=await sb.rpc('mark_class_attendance',{p_attendance_code:code,p_latitude:loc.lat,p_longitude:loc.lon,p_accuracy_m:loc.accuracy});if(error)throw error;$('#scanMsg').textContent='Attendance recorded successfully.';toast('Attendance recorded.');await refreshData()}catch(err){$('#scanMsg').textContent=failMessage(err)}};
 }
 function history(){
- const mine=db.attendance.filter(a=>a.studentId===me.id).sort((a,b)=>b.time.localeCompare(a.time));
- $('#content').innerHTML=`<div class="section"><h3>My attendance (${mine.length})</h3></div>${table(['Course','Date and time','Status'],mine.map(a=>`<tr><td>${safe(getCourse(a.courseId)?.code||'')}</td><td>${new Date(a.time).toLocaleString()}</td><td><span class="status">${safe(a.status)}</span></td></tr>`))}`;
+ const mine=db.attendance.filter(a=>a.student_id===me.id).sort((a,b)=>b.marked_at.localeCompare(a.marked_at));
+ $('#content').innerHTML=`<div class="section"><h3>My attendance (${mine.length})</h3></div>${table(['Course','Date and time','Status'],mine.map(a=>`<tr><td>${esc(getCourse(db.sessions.find(s=>s.id===a.session_id)?.course_id)?.course_code||'')}</td><td>${new Date(a.marked_at).toLocaleString()}</td><td><span class="status">PRESENT</span></td></tr>`))}`;
 }
 function reports(){
- let rows=db.attendance.filter(a=>me.role==='ADMIN'||db.sessions.some(s=>s.id===a.sessionId&&s.lecturerId===me.id));
- $('#content').innerHTML=`<div class="section"><h3>Attendance records (${rows.length})</h3><button id="csv" class="btn primary">Download CSV</button></div>${table(['Student','Index','Course','Date','Time','Status'],rows.map(a=>{let u=getUser(a.studentId);return `<tr><td>${safe(u?.name||'')}</td><td>${safe(u?.index||'')}</td><td>${safe(getCourse(a.courseId)?.code||'')}</td><td>${new Date(a.time).toLocaleDateString()}</td><td>${new Date(a.time).toLocaleTimeString()}</td><td>${safe(a.status)}</td></tr>`}))}`;
- $('#csv').onclick=()=>{let data=[['Student','Index','Course','DateTime','Status'],...rows.map(a=>[getUser(a.studentId)?.name,getUser(a.studentId)?.index,getCourse(a.courseId)?.code,a.time,a.status])];let csv=data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');let blob=new Blob(['\ufeff'+csv],{type:'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='knust-attendance-report.csv';a.click();URL.revokeObjectURL(url)};
+ const rows=db.attendance.filter(a=>me.role==='admin'||db.sessions.some(s=>s.id===a.session_id&&s.lecturer_id===me.id));
+ $('#content').innerHTML=`<div class="section"><h3>Attendance records (${rows.length})</h3><button id="csv" class="btn primary">Download CSV</button></div>${table(['Student','Student ID','Course','Date','Time','Status'],rows.map(a=>{const u=getUser(a.student_id),s=db.sessions.find(x=>x.id===a.session_id);return `<tr><td>${esc(u?.full_name||'')}</td><td>${esc(u?.student_id||'')}</td><td>${esc(getCourse(s?.course_id)?.course_code||'')}</td><td>${new Date(a.marked_at).toLocaleDateString()}</td><td>${new Date(a.marked_at).toLocaleTimeString()}</td><td>PRESENT</td></tr>`}))}`;
+ $('#csv').onclick=()=>{const data=[['Student','Student ID','Course','DateTime','Status'],...rows.map(a=>[getUser(a.student_id)?.full_name,getUser(a.student_id)?.student_id,getCourse(db.sessions.find(s=>s.id===a.session_id)?.course_id)?.course_code,a.marked_at,'PRESENT'])];const csv=data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='knust-attendance-report.csv';a.click();URL.revokeObjectURL(url)};
 }
-$('#loginForm').onsubmit=e=>{e.preventDefault();let id=$('#identity').value.trim().toLowerCase(),pw=$('#pass').value;let u=db.users.find(x=>[x.email,x.index,x.staffId].some(v=>v&&v.toLowerCase()===id)&&x.password===pw&&x.status==='ACTIVE');if(!u){$('#loginError').textContent='Incorrect login details or account suspended.';return}$('#loginError').textContent='';login(u)};
-$('#logout').onclick=()=>{me=null;$('#app').classList.add('hidden');$('#loginScreen').classList.remove('hidden');$('#pass').value=''};
+$('#loginForm').onsubmit=async e=>{e.preventDefault();loginViewError('Signing in…');try{const {error}=await sb.auth.signInWithPassword({email:$('#identity').value.trim(),password:$('#pass').value});if(error)throw error;loginViewError('');await enterApp()}catch(err){loginViewError(failMessage(err))}};
+$('#logout').onclick=async()=>{await sb.auth.signOut();me=null;$('#pass').value='';loginView()};
 $('#closeModal').onclick=()=>$('#qrModal').classList.add('hidden');
 $('#copyQr').onclick=async()=>{try{await navigator.clipboard.writeText(activeQr);toast('Attendance code copied.')}catch{toast('Copy not available. Select the code text manually.')}};
-db=seed();
+function start(){
+ if(!window.supabase){loginViewError('Supabase library could not load. Check your internet connection.');return}
+ if(SUPABASE_PUBLISHABLE_KEY.includes('PASTE_YOUR')){loginViewError('Website setup needed: add your Supabase Publishable Key in index.html.');return}
+ sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+ sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_IN'&&session&&!me)setTimeout(enterApp,0);if(event==='SIGNED_OUT'){me=null;loginView()}});
+ sb.auth.getSession().then(({data})=>{if(data.session)enterApp()});
+}
+start();
 </script>
 </body></html>
