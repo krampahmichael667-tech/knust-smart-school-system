@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#075b35">
+<title>KNUST Smart School & Class Attendance</title>
+<style>
+:root{--green:#075b35;--green2:#0b7847;--gold:#e9bd45;--bg:#f4f7f5;--ink:#17251d;--muted:#6b7a70;--line:#e1e9e3;--white:#fff;--red:#b42318}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}
+.login{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(135deg,#064629,#0b7847)}.login-card{background:#fff;width:min(100%,460px);padding:34px;border-radius:20px;box-shadow:0 20px 65px #001b0e55}.crest{width:58px;height:58px;background:var(--green);color:#fff;border-radius:50%;display:grid;place-items:center;font-size:28px;font-weight:bold;border:3px solid var(--gold)}.eyebrow{font-size:10px;letter-spacing:1px;color:var(--green);font-weight:bold;margin-top:18px}.login h1{font-size:27px;margin:8px 0}.muted,.hint{color:var(--muted);line-height:1.5}.login form{display:grid;gap:14px;margin-top:22px}
+label{font-size:13px;font-weight:bold;display:grid;gap:7px}input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cedbd1;border-radius:8px;background:#fff;color:var(--ink);outline:none}input:focus,select:focus,textarea:focus{border-color:var(--green2);box-shadow:0 0 0 3px #0b78471a}
+.btn{border:0;border-radius:8px;padding:11px 15px;font-weight:bold}.primary{background:var(--green);color:white}.primary:hover{background:#034526}.soft{background:#eaf3ed;color:var(--green)}.danger{background:#fff0ee;color:var(--red)}.wide{width:100%;padding:13px}.error{color:var(--red);font-size:13px;min-height:15px}.demo{border-top:1px solid var(--line);margin-top:22px;padding-top:14px;font-size:12px}.demo summary{cursor:pointer;font-weight:bold}.demo p{margin:9px 0}
+.layout{display:flex;min-height:100vh}.sidebar{width:245px;background:#064629;color:#fff;padding:22px 15px;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:10px;padding:0 7px 24px}.brand-mark{width:40px;height:40px;border:2px solid var(--gold);border-radius:50%;display:grid;place-items:center;font-weight:bold}.brand small{display:block;color:#c6dfcf;margin-top:4px}.side-caption{font-size:10px;color:#a9cbb6;letter-spacing:1px;padding:10px}.nav{display:grid;gap:5px}.nav button{background:none;border:0;color:#e6f2e9;text-align:left;padding:12px;border-radius:8px}.nav button.active,.nav button:hover{background:#ffffff20}.logout{margin-top:auto;border:1px solid #ffffff55;color:white;background:transparent;border-radius:8px;padding:11px;text-align:left}
+.main{min-width:0;flex:1}.topbar{height:86px;background:white;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:15px 30px}.topbar h2{margin:5px 0 0;font-size:22px}.user{font-size:13px;font-weight:bold;text-align:right}.pill{display:inline-block;background:#e8f3eb;color:var(--green);padding:5px 9px;border-radius:30px;font-size:10px;margin-top:5px}.content{padding:26px 30px;max-width:1400px;margin:auto}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.stat,.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px}.stat span{color:var(--muted);font-size:12px}.stat strong{display:block;color:var(--green);font-size:28px;margin-top:8px}.panel{margin-top:18px}.panel h3{margin:0 0 15px}.section{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:24px 0 12px}.section h3{margin:0}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.full{grid-column:1/-1}.tablebox{overflow:auto;background:white;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;min-width:600px;font-size:13px}th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line)}th{background:#f8faf8;color:#66756b;text-transform:uppercase;font-size:10px;letter-spacing:.5px}tr:last-child td{border:0}.status{font-size:10px;padding:5px 8px;border-radius:20px;background:#e8f5eb;color:#176b36}.pending{background:#fff4dc;color:#8b5b00}.empty{text-align:center;padding:25px;color:var(--muted);font-size:13px}.actions{display:flex;gap:6px;flex-wrap:wrap}.hint{font-size:12px}.notice{background:#fff8df;border:1px solid #f0df9f;color:#76580c;padding:11px;border-radius:8px;font-size:12px;line-height:1.5}.modal{position:fixed;inset:0;background:#00180dcc;display:grid;place-items:center;padding:18px;z-index:5}.modalbox{position:relative;background:white;padding:25px;border-radius:15px;width:min(100%,420px);text-align:center}.close{position:absolute;right:12px;top:8px;border:0;background:none;font-size:26px}.qr{width:240px;height:240px;max-width:100%;object-fit:contain;margin:12px auto;display:block}.toast{position:fixed;right:18px;top:18px;background:#14271b;color:white;padding:12px 16px;border-radius:8px;z-index:10;opacity:0;transition:.2s;pointer-events:none}.toast.show{opacity:1}.scanner{max-width:480px;min-height:230px;border:1px dashed #9aafa0;border-radius:10px;margin:12px 0;display:grid;place-items:center;color:var(--muted);padding:12px}
+@media(max-width:850px){.sidebar{width:205px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.content{padding:20px}}
+@media(max-width:620px){.layout{display:block}.sidebar{width:100%;padding:12px;display:block}.brand{padding:0 5px 10px}.side-caption{display:none}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap;padding:9px}.logout{position:absolute;right:12px;top:17px;padding:8px}.topbar{height:auto;padding:14px 17px}.topbar h2{font-size:18px}.content{padding:16px}.grid{gap:8px}.stat{padding:13px}.stat strong{font-size:23px}.formgrid{grid-template-columns:1fr}.full{grid-column:auto}.login-card{padding:25px 21px}}
+</style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+<section id="loginScreen" class="login">
+ <div class="login-card">
+  <div class="crest">K</div><div class="eyebrow">KWAME NKRUMAH UNIVERSITY OF SCIENCE AND TECHNOLOGY</div>
+  <h1>Smart School Management</h1><p class="muted">Class attendance, courses and student records in one simple portal.</p>
+  <form id="loginForm"><label>Email, index number or staff ID<input id="identity" required placeholder="Enter your login ID"></label><label>Password<input id="pass" type="password" required placeholder="Enter password"></label><button class="btn primary wide">Sign in</button><div id="loginError" class="error"></div></form>
+  <details class="demo"><summary>Demo accounts (click to view)</summary><p><b>Admin:</b> admin@knust.edu.gh / Admin123</p><p><b>Lecturer:</b> lecturer@knust.edu.gh / Teach123</p><p><b>Student:</b> 70012345 / Student123</p><small>Demo data is stored only in this browser. Do not use real sensitive student information.</small></details>
+ </div>
+</section>
+<div id="app" class="layout hidden">
+ <aside class="sidebar"><div class="brand"><div class="brand-mark">K</div><div><b>KNUST</b><small>Smart Attendance</small></div></div><div id="sideCaption" class="side-caption"></div><nav id="nav" class="nav"></nav><button id="logout" class="logout">Sign out ↗</button></aside>
+ <main class="main"><header class="topbar"><div><div class="eyebrow" style="margin:0">SMART SCHOOL MANAGEMENT</div><h2 id="title">Dashboard</h2></div><div class="user"><div id="userName"></div><span id="userRole" class="pill"></span></div></header><div id="content" class="content"></div></main>
+</div>
+<div id="qrModal" class="modal hidden"><div class="modalbox"><button class="close" id="closeModal">×</button><h3>Class attendance code</h3><p id="qrInfo" class="muted"></p><img id="qrImg" class="qr" alt="QR code"><p id="qrText" class="hint"></p><button id="copyQr" class="btn soft">Copy attendance code</button></div></div>
+<script>
+/* KNUST Smart Attendance - browser-only demonstration.
+   All records are kept in localStorage on this device. */
+const $=s=>document.querySelector(s), uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36), today=()=>new Date().toISOString();
+let db, me=null, page='dashboard', activeQr='';
+const KEY='knust_smart_attendance_v1';
+function seed(){
+ if(localStorage.getItem(KEY))return JSON.parse(localStorage.getItem(KEY));
+ const admin={id:uid(),role:'ADMIN',name:'System Administrator',email:'admin@knust.edu.gh',password:'Admin123',status:'ACTIVE',department:'ICT Directorate'};
+ const lect={id:uid(),role:'LECTURER',name:'Dr. Ama Serwaa',email:'lecturer@knust.edu.gh',staffId:'KNUST-L001',password:'Teach123',status:'ACTIVE',department:'Computer Engineering'};
+ const stud={id:uid(),role:'STUDENT',name:'Yaw Boateng',email:'yaw@knust.edu.gh',index:'70012345',password:'Student123',status:'ACTIVE',department:'Computer Engineering',programme:'BSc Computer Engineering',level:200};
+ const course={id:uid(),code:'COE 251',name:'Computer Architecture and Organization',lecturerId:lect.id,venue:'ICT Lecture Theatre',department:'Computer Engineering',credits:3};
+ const data={users:[admin,lect,stud],courses:[course],registrations:[{id:uid(),studentId:stud.id,courseId:course.id}],sessions:[],attendance:[]};localStorage.setItem(KEY,JSON.stringify(data));return data;
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+function safe(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(s){let t=$('#toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
+function userKey(u){return u.email||u.index||u.staffId||''}
+function getCourse(id){return db.courses.find(c=>c.id===id)}
+function getUser(id){return db.users.find(u=>u.id===id)}
+function coursesForUser(){if(me.role==='ADMIN')return db.courses;if(me.role==='LECTURER')return db.courses.filter(c=>c.lecturerId===me.id);return db.courses.filter(c=>db.registrations.some(r=>r.studentId===me.id&&r.courseId===c.id))}
+const menus={ADMIN:[['dashboard','Overview'],['people','Students & lecturers'],['courses','Courses'],['register','Course registration'],['reports','Attendance reports']],LECTURER:[['dashboard','Overview'],['sessions','Attendance sessions'],['reports','Attendance reports']],STUDENT:[['dashboard','Overview'],['scan','Scan attendance'],['history','My attendance'],['courses','My courses']]};
+function login(user){me=user;$('#loginScreen').classList.add('hidden');$('#app').classList.remove('hidden');$('#userName').textContent=user.name;$('#userRole').textContent=user.role;$('#sideCaption').textContent=user.role+' MENU';renderNav();go('dashboard')}
+function renderNav(){$('#nav').innerHTML=menus[me.role].map(([k,v])=>`<button class="${page===k?'active':''}" data-page="${k}">${v}</button>`).join('');document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>go(b.dataset.page))}
+function go(p){page=p;renderNav();const titles={dashboard:'Dashboard',people:'Students & lecturers',courses:me.role==='STUDENT'?'My courses':'Course management',register:'Course registration',sessions:'Attendance sessions',scan:'Scan attendance',history:'My attendance',reports:'Attendance reports'};$('#title').textContent=titles[p];({dashboard:dashboard,people:people,courses:courses,register:register,sessions:sessions,scan:scan,history:history,reports:reports}[p])()}
+function stat(n,v){return `<div class="stat"><span>${n}</span><strong>${v}</strong></div>`}
+function table(head,rows){return rows.length?`<div class="tablebox"><table><thead><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`:'<div class="empty">No records available yet.</div>'}
+function dashboard(){
+ const cs=coursesForUser(), sessions=me.role==='ADMIN'?db.sessions:db.sessions.filter(s=>me.role==='LECTURER'?s.lecturerId===me.id:db.registrations.some(r=>r.studentId===me.id&&r.courseId===s.courseId));
+ const at=me.role==='ADMIN'?db.attendance:db.attendance.filter(a=>me.role==='STUDENT'?a.studentId===me.id:sessions.some(s=>s.id===a.sessionId));
+ let cards='';if(me.role==='ADMIN')cards+=stat('Students',db.users.filter(u=>u.role==='STUDENT').length);if(me.role!=='STUDENT')cards+=stat('Lecturers',db.users.filter(u=>u.role==='LECTURER').length);cards+=stat('Courses',cs.length)+stat('Attendance records',at.length)+stat('Class sessions',sessions.length);
+ $('#content').innerHTML=`<div class="grid">${cards}</div><div class="section"><h3>${me.role==='STUDENT'?'My registered courses':'Courses'}</h3></div>${table(['Code','Course title','Lecturer','Venue'],cs.map(c=>`<tr><td><b>${safe(c.code)}</b></td><td>${safe(c.name)}</td><td>${safe(getUser(c.lecturerId)?.name||'Not assigned')}</td><td>${safe(c.venue||'—')}</td></tr>`))}<div class="section"><h3>Recent attendance</h3></div>${table(['Student','Index','Course','Date','Status'],at.slice().sort((a,b)=>b.time.localeCompare(a.time)).slice(0,8).map(a=>`<tr><td>${safe(getUser(a.studentId)?.name||'')}</td><td>${safe(getUser(a.studentId)?.index||'')}</td><td>${safe(getCourse(a.courseId)?.code||'')}</td><td>${new Date(a.time).toLocaleString()}</td><td><span class="status">${safe(a.status)}</span></td></tr>`))}`;
+}
+function people(){
+ const users=db.users.filter(u=>u.role!=='ADMIN');
+ $('#content').innerHTML=`<div class="panel"><h3>Create student or lecturer account</h3><form id="personForm" class="formgrid">
+ <label>Account type<select name="role"><option>STUDENT</option><option>LECTURER</option></select></label><label>Full name<input name="name" required></label>
+ <label>Email<input name="email" type="email"></label><label>Temporary password<input name="password" minlength="6" required></label>
+ <label>Student index number<input name="index" placeholder="Required for students"></label><label>Lecturer staff ID<input name="staffId" placeholder="Required for lecturers"></label>
+ <label>Department<input name="department"></label><label>Programme<input name="programme"></label><label>Level<input name="level" type="number"></label><div class="full"><button class="btn primary">Create account</button></div></form></div>
+ <div class="section"><h3>Accounts (${users.length})</h3></div>${table(['Name','Role','Login ID','Department','Status','Action'],users.map(u=>`<tr><td>${safe(u.name)}</td><td>${u.role}</td><td>${safe(userKey(u))}</td><td>${safe(u.department||'—')}</td><td><span class="status ${u.status==='ACTIVE'?'':'pending'}">${u.status}</span></td><td><button class="btn soft" data-status="${u.id}">${u.status==='ACTIVE'?'Suspend':'Activate'}</button></td></tr>`))}`;
+ $('#personForm').onsubmit=e=>{e.preventDefault();let x=Object.fromEntries(new FormData(e.target));if(x.role==='STUDENT'&&!x.index)return toast('Student index number is required.');if(x.role==='LECTURER'&&!x.staffId)return toast('Lecturer staff ID is required.');if(db.users.some(u=>userKey(u).toLowerCase()&&(userKey(u).toLowerCase()===(x.email||x.index||x.staffId).toLowerCase())))return toast('That login ID already exists.');x.id=uid();x.status='ACTIVE';db.users.push(x);save();toast('Account created.');people()};
+ document.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>{let u=getUser(b.dataset.status);u.status=u.status==='ACTIVE'?'SUSPENDED':'ACTIVE';save();people()});
+}
+function courses(){
+ const cs=coursesForUser(),lecturers=db.users.filter(u=>u.role==='LECTURER'&&u.status==='ACTIVE');
+ $('#content').innerHTML=(me.role==='ADMIN'?`<div class="panel"><h3>Create course</h3><form id="courseForm" class="formgrid">
+ <label>Course code<input name="code" required placeholder="e.g. COE 251"></label><label>Course title<input name="name" required></label><label>Credits<input name="credits" type="number" value="3"></label><label>Department<input name="department"></label><label>Lecturer<select name="lecturerId"><option value="">Unassigned</option>${lecturers.map(l=>`<option value="${l.id}">${safe(l.name)}</option>`).join('')}</select></label><label>Venue<input name="venue"></label><div class="full"><button class="btn primary">Save course</button></div></form></div>`:'')+`<div class="section"><h3>Course list (${cs.length})</h3></div>${table(['Code','Title','Credits','Lecturer','Venue'],cs.map(c=>`<tr><td><b>${safe(c.code)}</b></td><td>${safe(c.name)}</td><td>${safe(c.credits||3)}</td><td>${safe(getUser(c.lecturerId)?.name||'—')}</td><td>${safe(c.venue||'—')}</td></tr>`))}`;
+ if($('#courseForm'))$('#courseForm').onsubmit=e=>{e.preventDefault();let x=Object.fromEntries(new FormData(e.target));if(db.courses.some(c=>c.code.toLowerCase()===x.code.trim().toLowerCase()))return toast('Course code already exists.');x.id=uid();x.code=x.code.toUpperCase();db.courses.push(x);save();toast('Course saved.');courses()};
+}
+function register(){
+ const students=db.users.filter(u=>u.role==='STUDENT'),cs=db.courses;
+ $('#content').innerHTML=`<div class="panel"><h3>Register student for course</h3><form id="regForm" class="formgrid"><label>Student<select name="studentId" required><option value="">Select student</option>${students.map(s=>`<option value="${s.id}">${safe(s.name)} — ${safe(s.index)}</option>`).join('')}</select></label><label>Course<select name="courseId" required><option value="">Select course</option>${cs.map(c=>`<option value="${c.id}">${safe(c.code)} — ${safe(c.name)}</option>`).join('')}</select></label><div class="full"><button class="btn primary">Register student</button></div></form></div><p class="hint">Students can only record attendance for courses they are registered for.</p>`;
+ $('#regForm').onsubmit=e=>{e.preventDefault();let x=Object.fromEntries(new FormData(e.target));if(db.registrations.some(r=>r.studentId===x.studentId&&r.courseId===x.courseId))return toast('Student is already registered.');db.registrations.push({id:uid(),...x});save();toast('Student registered.')};
+}
+
+function getLiveLocation(){
+ return new Promise((resolve,reject)=>{
+  if(!navigator.geolocation) return reject(new Error('This browser does not support location access.'));
+  navigator.geolocation.getCurrentPosition(
+   p=>resolve({lat:p.coords.latitude,lon:p.coords.longitude,accuracy:Math.round(p.coords.accuracy),capturedAt:today()}),
+   e=>reject(new Error(e.code===1?'Location permission was denied. Please allow location access.':e.code===2?'Your location is unavailable. Try again outdoors.':'Location request timed out. Try again.')),
+   {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+  );
+ });
+}
+function distanceMetres(a,b){
+ const rad=n=>n*Math.PI/180, R=6371000;
+ const dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon);
+ const x=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
+ return 2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+function sessions(){
+ const cs=coursesForUser(),mine=db.sessions.filter(s=>me.role==='ADMIN'||s.lecturerId===me.id);
+ $('#content').innerHTML=`<div class="panel"><h3>Start class attendance</h3><form id="sessionForm" class="formgrid"><label>Course<select name="courseId" required><option value="">Choose course</option>${cs.map(c=>`<option value="${c.id}">${safe(c.code)} — ${safe(c.name)}</option>`).join('')}</select></label><label>QR validity (minutes)<input name="duration" type="number" min="1" max="90" value="10"></label><div class="full notice">Your browser will ask permission to capture the lecturer’s current location when the class starts. Students must allow location access when submitting attendance. Location is used only for this attendance check.</div><div class="full"><button class="btn primary">Generate QR attendance code</button></div></form></div><div class="section"><h3>Attendance sessions</h3></div>${table(['Course','Created','Expires','Status','Action'],mine.slice().reverse().map(s=>`<tr><td>${safe(getCourse(s.courseId)?.code||'')}</td><td>${new Date(s.created).toLocaleString()}</td><td>${new Date(s.expires).toLocaleTimeString()}</td><td><span class="status ${s.closed?'pending':''}">${s.closed?'CLOSED':Date.now()>Date.parse(s.expires)?'EXPIRED':'ACTIVE'}</span></td><td><div class="actions"><button class="btn soft" data-showqr="${s.id}">Show QR</button>${!s.closed&&Date.now()<Date.parse(s.expires)?`<button class="btn danger" data-close="${s.id}">Close</button>`:''}</div></td></tr>`))}`;
+ $('#sessionForm').onsubmit=async e=>{e.preventDefault();let x=Object.fromEntries(new FormData(e.target)),mins=Math.min(90,Math.max(1,Number(x.duration)||10));try{toast('Requesting lecturer location…');const loc=await getLiveLocation();let s={id:uid(),courseId:x.courseId,lecturerId:me.id,created:today(),expires:new Date(Date.now()+mins*60000).toISOString(),closed:false,code:uid()+uid(),location:loc};db.sessions.push(s);save();showQr(s);sessions()}catch(err){toast(err.message)}};
+ document.querySelectorAll('[data-showqr]').forEach(b=>b.onclick=()=>showQr(db.sessions.find(s=>s.id===b.dataset.showqr)));
+ document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{let s=db.sessions.find(s=>s.id===b.dataset.close);s.closed=true;save();sessions()});
+}
+function showQr(s){activeQr=s.code;$('#qrInfo').textContent=(getCourse(s.courseId)?.code||'Class')+' • expires '+new Date(s.expires).toLocaleTimeString();$('#qrText').textContent='Attendance code: '+s.code;$('#qrImg').src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data='+encodeURIComponent(s.code);$('#qrModal').classList.remove('hidden')}
+function scan(){
+ const cs=coursesForUser();
+ $('#content').innerHTML=`<div class="panel" style="max-width:600px"><h3>Record class attendance</h3><p class="hint">Enter the code shown by your lecturer. When you submit, your browser will ask permission to share your current location. Your location is compared with the lecturer’s recorded class location.</p><div class="scanner">Use your phone camera to scan the lecturer's QR code, then enter the decoded text below.</div><form id="scanForm" class="formgrid"><label class="full">Attendance code<input name="code" required placeholder="Paste the code decoded from the QR"></label><div class="full"><button class="btn primary">Submit attendance</button></div></form><div id="scanMsg" class="hint"></div></div>`;
+ $('#scanForm').onsubmit=async e=>{e.preventDefault();let code=new FormData(e.target).get('code').trim(),s=db.sessions.find(x=>x.code===code);if(!s||s.closed||Date.now()>Date.parse(s.expires))return $('#scanMsg').textContent='This code is invalid, closed or expired.';if(!db.registrations.some(r=>r.studentId===me.id&&r.courseId===s.courseId))return $('#scanMsg').textContent='You are not registered for this course.';if(db.attendance.some(a=>a.studentId===me.id&&a.sessionId===s.id))return $('#scanMsg').textContent='Attendance has already been recorded for this class.';$('#scanMsg').textContent='Requesting your location…';try{const loc=await getLiveLocation();if(!s.location)return $('#scanMsg').textContent='This session has no lecturer location. Ask the lecturer to create a new session.';const metres=distanceMetres(s.location,loc);const allowed=150+Math.min(50,(s.location.accuracy||0)+(loc.accuracy||0));if(metres>allowed)return $('#scanMsg').textContent='You appear to be outside the class location range ('+Math.round(metres)+' metres away). Attendance was not recorded.';db.attendance.push({id:uid(),studentId:me.id,courseId:s.courseId,sessionId:s.id,time:today(),status:'PRESENT',location:{lat:loc.lat,lon:loc.lon,accuracy:loc.accuracy,distanceMetres:Math.round(metres)}});save();$('#scanMsg').textContent='Attendance recorded. Your location was within the permitted range.';toast('Attendance recorded.')}catch(err){$('#scanMsg').textContent=err.message}};
+}
+function history(){
+ const mine=db.attendance.filter(a=>a.studentId===me.id).sort((a,b)=>b.time.localeCompare(a.time));
+ $('#content').innerHTML=`<div class="section"><h3>My attendance (${mine.length})</h3></div>${table(['Course','Date and time','Status'],mine.map(a=>`<tr><td>${safe(getCourse(a.courseId)?.code||'')}</td><td>${new Date(a.time).toLocaleString()}</td><td><span class="status">${safe(a.status)}</span></td></tr>`))}`;
+}
+function reports(){
+ let rows=db.attendance.filter(a=>me.role==='ADMIN'||db.sessions.some(s=>s.id===a.sessionId&&s.lecturerId===me.id));
+ $('#content').innerHTML=`<div class="section"><h3>Attendance records (${rows.length})</h3><button id="csv" class="btn primary">Download CSV</button></div>${table(['Student','Index','Course','Date','Time','Status'],rows.map(a=>{let u=getUser(a.studentId);return `<tr><td>${safe(u?.name||'')}</td><td>${safe(u?.index||'')}</td><td>${safe(getCourse(a.courseId)?.code||'')}</td><td>${new Date(a.time).toLocaleDateString()}</td><td>${new Date(a.time).toLocaleTimeString()}</td><td>${safe(a.status)}</td></tr>`}))}`;
+ $('#csv').onclick=()=>{let data=[['Student','Index','Course','DateTime','Status'],...rows.map(a=>[getUser(a.studentId)?.name,getUser(a.studentId)?.index,getCourse(a.courseId)?.code,a.time,a.status])];let csv=data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');let blob=new Blob(['\ufeff'+csv],{type:'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='knust-attendance-report.csv';a.click();URL.revokeObjectURL(url)};
+}
+$('#loginForm').onsubmit=e=>{e.preventDefault();let id=$('#identity').value.trim().toLowerCase(),pw=$('#pass').value;let u=db.users.find(x=>[x.email,x.index,x.staffId].some(v=>v&&v.toLowerCase()===id)&&x.password===pw&&x.status==='ACTIVE');if(!u){$('#loginError').textContent='Incorrect login details or account suspended.';return}$('#loginError').textContent='';login(u)};
+$('#logout').onclick=()=>{me=null;$('#app').classList.add('hidden');$('#loginScreen').classList.remove('hidden');$('#pass').value=''};
+$('#closeModal').onclick=()=>$('#qrModal').classList.add('hidden');
+$('#copyQr').onclick=async()=>{try{await navigator.clipboard.writeText(activeQr);toast('Attendance code copied.')}catch{toast('Copy not available. Select the code text manually.')}};
+db=seed();
+</script>
+</body></html>
